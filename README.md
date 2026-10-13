@@ -8,14 +8,17 @@ It uses a single alphabet: there is no distinction between uppercase and lowerca
 
 The repository contains the source artwork and everything needed to reproduce the generated font files.
 
-The build system currently supports **Linux x86_64**. Windows builds are not supported directly; on Windows, use a Linux environment such as WSL.
+The build system currently supports **Debian-based Linux x86_64 systems**. Ubuntu and Debian are supported. Other Linux distributions are not currently supported because the private FontForge runtime is assembled from Debian packages.
+
+Windows builds are not supported directly; on Windows, use a Debian or Ubuntu environment such as WSL.
 
 macOS and other architectures are not supported yet.
 
 ### Requirements
 
 - Python 3
-- A Linux x86_64 environment
+- Debian or Debian-based Linux
+- x86_64 architecture
 - A working internet connection when the required build tools are not already available locally
 
 The build system will reuse suitable versions of FontForge and resvg already installed on the system. If they are not available, it will download the pinned build tools into `tools/`.
@@ -28,19 +31,32 @@ The downloaded tools are disposable and are not installed system-wide.
 ./build/build.sh
 ```
 
-On Windows, use WSL or another Linux environment and run the Linux build script from there.
+On Windows, use WSL or another Debian-based Linux environment and run the Linux build script from there.
 
 The first build may download the required build tools. Subsequent builds reuse them.
 
 A successful build produces output similar to:
 
 ```text
-Building font and glyph SVGs...
-FontForge build complete.
-Rendering specimen.png...
-resvg completed specimen.png.
+Preparing build tools... done.
+Building font and glyph SVGs... done.
+Rendering specimen... done.
+
 Build complete.
 ```
+
+If the required Debian packages cannot be downloaded, the build will stop and ask you to update your package lists:
+
+```text
+Preparing build tools... failed
+
+Could not download a required package.
+Your package lists may be out of date.
+
+Run "sudo apt update", then try again.
+```
+
+The build does not automatically modify the host system's package state.
 
 To remove generated fonts and specimen files:
 
@@ -56,6 +72,57 @@ To remove downloaded build tools:
 
 The build tools can be downloaded again automatically by the next build.
 
+## Creating a release
+
+Release archives can be generated with:
+
+```sh
+./build/release.sh 1.0.0
+```
+
+The version number is used in the names of the generated archives.
+
+The script first performs a normal build, then creates two release archives under `release/`:
+
+```text
+release/
+├── Pigmatic-1.0.0-font.zip
+└── Pigmatic-1.0.0-source.tar.gz
+```
+
+The font archive contains the ready-to-use font files, the generated specimen, and a copy of the font license:
+
+```text
+Pigmatic-Regular.ttf
+Pigmatic-Regular.otf
+Pigmatic-Regular.woff2
+specimen.png
+LICENSE.txt
+```
+
+`LICENSE.txt` is a copy of `OFL.txt`.
+
+The source archive is generated from the committed Git repository state. It contains the source artwork, build system, documentation, and other tracked source files, but does not include untracked local files.
+
+The release script creates the artifacts locally. Publishing a release to GitHub is a separate step.
+
+For example, after creating and pushing a release tag:
+
+```sh
+git tag -a v1.0.0 -m "Pigmatic 1.0.0"
+git push origin v1.0.0
+```
+
+the artifacts can be uploaded with GitHub CLI:
+
+```sh
+gh release create v1.0.0 \
+    release/Pigmatic-1.0.0-font.zip \
+    release/Pigmatic-1.0.0-source.tar.gz \
+    --title "Pigmatic 1.0.0" \
+    --generate-notes
+```
+
 ## Repository layout
 
 ```text
@@ -68,6 +135,7 @@ Pigmatic/
 │   ├── build.py
 │   ├── build.sh
 │   ├── fontforge_build.py
+│   ├── release.sh
 │   ├── toolchain.toml
 │   ├── clean.sh
 │   └── clean-tools.sh
@@ -75,6 +143,7 @@ Pigmatic/
 ├── generated/
 │   └── svg/
 ├── dist/
+├── release/
 ├── LICENSE
 ├── OFL.txt
 └── README.md
@@ -84,7 +153,7 @@ Pigmatic/
 
 `specimen/specimen.svg` is the hand-authored specimen artwork. It is rendered to PNG during the build.
 
-`generated/` and `dist/` contain build outputs and are not authoritative source files.
+`generated/`, `dist/`, and `release/` contain generated build or release files and are not authoritative source files.
 
 `tools/` contains locally bootstrapped build tools and may be deleted and recreated at any time.
 
@@ -107,6 +176,14 @@ generated/svg/
 ```
 
 These files are generated from the source font and should not be edited directly.
+
+Release archives are placed under:
+
+```text
+release/
+```
+
+They are generated from the source repository and build outputs.
 
 ## Build tools
 
@@ -133,17 +210,22 @@ The build system also prefers existing suitable installations before downloading
 
 The build toolchain is self-contained within the repository's `tools/` directory. Removing `tools/` does not remove or modify system-wide software; the required tools will simply be bootstrapped again on the next build.
 
+Release source archives are generated from the committed Git repository state, making the source used for a release explicit and reproducible.
+
 ## Platform support
 
 Current support:
 
-- Linux x86_64
-- Windows through WSL or another Linux environment
+- Debian
+- Debian-based Linux distributions such as Ubuntu
+- x86_64 architecture
+- Windows through Debian or Ubuntu in WSL
 
 Not supported yet:
 
 - Native Windows builds
 - macOS
+- Other Linux distributions
 - Architectures other than x86_64
 
 The build system is intentionally kept simple and reproducible while additional platforms are evaluated.
@@ -158,4 +240,4 @@ The build scripts and other original software in this repository are licensed un
 
 See [LICENSE](LICENSE) for the complete license.
 
-Copyright © 2026 Mac.
+Copyright © 2026 Mac Musser.
